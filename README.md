@@ -11,11 +11,11 @@ Scripts in here are mainly set to configure the GitLab VM.
 
 ### running the main playbook
 
-ansible-playbook ~/gitlab/main.yml \
--i ~/git-repos/pcf-ansible/inventory \
--e ansible_ssh_user=user \
--e ansible_ssh_pass=PASSWORD \
--e ansible_sudo_pass=PASSWORD \ 
+ansible-playbook ~/gitlab/main.yml 
+-i ~/git-repos/pcf-ansible/inventory 
+-e ansible_ssh_user=user 
+-e ansible_ssh_pass=PASSWORD 
+-e ansible_sudo_pass=PASSWORD  
 -e target_hosts=target_hosts
 
 ### create admin token
@@ -27,11 +27,11 @@ pip install pyapi-gitlab (http://docs.ansible.com/ansible/latest/list_of_source_
 
 ### running the configure playbook
 This to add automation group and users to gotlab server. All users added with inital password 'password'
-ansible-playbook ~/gitlab/configure.yml \
--i ~/git-repos/pcf-ansible/inventory \
--e ansible_ssh_user=user \
--e ansible_ssh_pass=PASSWORD \
--e ansible_sudo_pass=PASSWORD \ 
--e target_hosts=target_hosts   \ 
+ansible-playbook ~/gitlab/configure.yml 
+-i ~/git-repos/pcf-ansible/inventory 
+-e ansible_ssh_user=user 
+-e ansible_ssh_pass=PASSWORD 
+-e ansible_sudo_pass=PASSWORD  
+-e target_hosts=target_hosts   
 -e url= git lab url
 -e token= administrator api token
