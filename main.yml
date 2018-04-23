@@ -1,0 +1,85 @@
+---
+# ansible-playbook -i ./inventory ./main.yml -e ansible_ssh_port=$ANSIBLE_TARGET_SSH_PORT -e ansible_ssh_user=$ANSIBLE_TARGET_SSH_USER -e ansible_ssh_pass=$ANSIBLE_TARGET_SSH_PASS -e ansible_sudo_pass=$ANSIBLE_TARGET_SSH_PASS -e target_hosts=gitlab
+
+- hosts: "{{ target_hosts }}"
+
+  tasks:
+    - name: test connection
+      ping:
+
+    - name: debug
+      debug: var=inventory_hostname
+      
+    - name: install list of  packages
+      yum: name={{item}} state=latest
+      with_items:
+        - policycoreutils
+        - openssh-server
+        - openssh-clients
+        - postfix
+        - git
+        - nc
+        - vim
+      become: true
+
+    - name: Enable services
+      service: name={{item}} enabled=true state=started
+      with_items:
+        - sshd
+        - postfix
+      become: true
+
+    - name: Check gitlab ctl file
+      stat: path=/usr/bin/gitlab-ctl
+      register: gitlab_st
+
+    - name: install gitlab-ce
+      block:
+        - name: download gitlab-ce locally
+          local_action: get_url url=https://packages.gitlab.com/gitlab/gitlab-ce/packages/el/6/gitlab-ce-10.5.4-ce.0.el6.x86_64.rpm/download.rpm dest=/tmp/gitlab-ce-10.5.4-ce.0.el6.x86_64.rpm
+
+        - name: copy gitlab-ce
+          copy:
+            src: /tmp/gitlab-ce-10.5.4-ce.0.el6.x86_64.rpm
+            dest: /tmp/gitlab-ce-10.5.4-ce.0.el6.x86_64.rpm
+      
+        - name: install Git-lab
+          shell: rpm -i /tmp/gitlab-ce-10.5.4-ce.0.el6.x86_64.rpm
+          become: true
+      
+      when: gitlab_st.stat.islnk is not defined 
+
+    - name: Check gitlab Configuration
+      stat: path=/etc/gitlab/gitlab.rb
+      register: gitlab_rb_st
+      become: true
+
+    - name: Configure gitlab
+      copy:
+        content: "{{ 'external_url ' }}'{{ target_hosts }}'{{ '\n' }}{{ 'nginx[\''redirect_http_to_https\''] = true\n' }}{{ 'ci_nginx[\''redirect_http_to_https\''] = true \n'}}"
+        dest: /etc/gitlab/gitlab.rb
+        mode: 0644
+      become: true
+      when: gitlab_rb_st.stat.islnk is not defined 
+            
+    - name: Reconfigure Git-lab
+      shell: gitlab-ctl reconfigure
+      ignore_errors: yes
+      become: true
+      
+    - name: Start Git-lab
+      shell: gitlab-ctl restart
+      become: true
+
+    - name: ensure /etc/gitlab/ssl directory exists
+      file:
+        path: /etc/gitlab/ssl
+        state: directory
+        mode: 700
+      become: true
+
+    - name: Generate certificate
+      shell: openssl req -nodes -newkey rsa:2048 -keyout /etc/gitlab/ssl/st0cvm1001a2.c01.bicadm.com.key -subj '/CN=st0cvm1001a2.c01.bicadm.com/O=Robert Bosch GmbH/C=DE/ST=Stuttgart/emailAddress=youhana.hana@dell.com' -out /etc/gitlab/st0cvm1001a2.c01.bicadm.com.csr
+      args:
+        creates: /etc/gitlab/ssl/st0cvm1001a2.c01.bicadm.com.key
+      become: true

@@ -1,0 +1,55 @@
+---
+# ansible-playbook ./configure.yml -i ../inventory ansible_ssh_user=$ANSIBLE_TARGET_SSH_USER -e ansible_ssh_pass=$ANSIBLE_TARGET_SSH_PASS -e target_hosts=TARGET_HOSTS -e url=URL -e token=TOKEN
+
+- hosts: "{{ target_hosts }}"
+
+  tasks:
+    - name: test connection
+      ping:
+
+    - name: debug
+      debug: var=inventory_hostname
+
+    - name: Create Gitlab automation Group
+      gitlab_group:
+        server_url: "{{ url }}"
+        validate_certs: false
+        login_token: "{{ token }}"
+        name: pcf-automation
+        state: present
+      delegate_to: localhost 
+      
+    - name: Create Gitlab Project {{ item.name }} in group automation
+      gitlab_project:
+        server_url: "{{ url }}"
+        validate_certs: false
+        login_token: "{{ token }}"
+        name: "{{ item.name }}"
+        description: " {{ item.description }}"
+        group: pcf-automation
+        state: present
+      delegate_to: localhost
+      with_items:
+        - {name: 'project_1', description: 'description 1'}
+        - {name: 'project_2', description: 'description 2'}
+
+    - name: Create Gitlab User
+      gitlab_user:
+        server_url: "{{ url }}"
+        validate_certs: false
+        login_token: "{{ token }}"
+        name: "{{ item.name }}"
+        username: "{{ item.username }}"
+        password: "{{ item.password }}"
+        email: "{{ item.email }}"
+        state: present
+        group: pcf-automation
+        access_level: owner
+        confirm: no
+        sshkey_name: "{{ item.sshKeyName }}"
+        sshkey_file: "{{ item.sshKey }}"
+      delegate_to: localhost
+      with_items:
+        - {name: 'user_1', username: 'user_1', password: 'password', email: 'user_1@gmail.com', sshKeyName: null, sshKey: null}
+        - {name: 'user_2', username: 'user_2', password: 'password', email: 'user_2@gmail.com', sshKeyName: null, sshKey: null}
+
